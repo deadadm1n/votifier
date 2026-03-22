@@ -58,38 +58,53 @@ jobs:
   server-smoke-test:
     needs: build
     runs-on: ubuntu-latest
-    if: hashFiles('neoforge/build.gradle') != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check for NeoForge subproject
+        id: check
+        run: |
+          if [ -f neoforge/build.gradle ]; then
+            echo "has_neoforge=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_neoforge=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Detect Java version
+        if: steps.check.outputs.has_neoforge == 'true'
         id: java
         run: |
           JAVA_VERSION=$(grep 'java_version=' gradle.properties | cut -d'=' -f2)
           echo "version=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK
+        if: steps.check.outputs.has_neoforge == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ steps.java.outputs.version }}
           distribution: 'temurin'
 
       - name: Setup Gradle
+        if: steps.check.outputs.has_neoforge == 'true'
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build project
+        if: steps.check.outputs.has_neoforge == 'true'
         run: ./gradlew build
 
       - name: Accept EULA
+        if: steps.check.outputs.has_neoforge == 'true'
         run: mkdir -p neoforge/run && echo "eula=true" > neoforge/run/eula.txt
 
       - name: Start server in background
+        if: steps.check.outputs.has_neoforge == 'true'
         run: ./gradlew :neoforge:runServer > server.log 2>&1 &
         env:
           CI: true
 
       - name: Wait for Votifier to start
+        if: steps.check.outputs.has_neoforge == 'true'
         run: |
           timeout=300
           elapsed=0
@@ -115,13 +130,13 @@ jobs:
           exit 1
 
       - name: Stop server
-        if: always()
+        if: always() && steps.check.outputs.has_neoforge == 'true'
         run: |
           pkill -f "runServer" || true
           pkill -f "minecraft" || true
 
       - name: Upload server log
-        if: always()
+        if: always() && steps.check.outputs.has_neoforge == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: server-log
