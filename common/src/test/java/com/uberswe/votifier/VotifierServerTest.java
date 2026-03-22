@@ -35,7 +35,6 @@ class VotifierServerTest {
         config = VotifierConfig.load(tempDir);
         keyManager = new RSAKeyManager();
         keyManager.load(tempDir);
-        voteStorage = new VoteStorage(tempDir);
 
         // Use a custom config with port 0 for ephemeral port
         Path configDir = tempDir.resolve("server-config");
@@ -44,6 +43,7 @@ class VotifierServerTest {
         String json = "{\"host\":\"127.0.0.1\",\"port\":0,\"token\":\"" + config.getToken() + "\",\"commands\":[]}";
         java.nio.file.Files.writeString(configDir.resolve("config.json"), json);
         VotifierConfig serverConfig = VotifierConfig.load(configDir);
+        voteStorage = new VoteStorage(serverConfig);
 
         server = new VotifierServer(serverConfig, keyManager, voteStorage);
         server.start();

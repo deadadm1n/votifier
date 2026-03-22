@@ -78,7 +78,7 @@ class VotifierConfigTest {
         String originalContent = Files.readString(tempDir.resolve("config.json"));
 
         // Save again (content should remain valid JSON)
-        config.save(tempDir);
+        config.save();
         String newContent = Files.readString(tempDir.resolve("config.json"));
         assertFalse(newContent.isEmpty());
         assertEquals(originalContent, newContent);

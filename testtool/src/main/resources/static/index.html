@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Votifier Test Tool</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 720px; margin: 0 auto; padding: 24px;
+    background: #f5f5f5; color: #333;
+  }
+  h1 { margin: 0 0 24px; font-size: 1.5rem; }
+  fieldset {
+    border: 1px solid #ddd; border-radius: 8px; padding: 16px;
+    margin-bottom: 16px; background: #fff;
+  }
+  legend { font-weight: 600; padding: 0 6px; }
+  label { display: block; margin-bottom: 4px; font-size: 0.85rem; font-weight: 500; }
+  input, textarea, select {
+    width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+    font-family: inherit; font-size: 0.9rem; margin-bottom: 12px;
+  }
+  textarea { resize: vertical; font-family: monospace; font-size: 0.8rem; }
+  .row { display: flex; gap: 12px; }
+  .row > * { flex: 1; }
+  .protocol-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+  .protocol-toggle button {
+    flex: 1; padding: 8px; border: 2px solid #ccc; border-radius: 4px;
+    background: #fff; cursor: pointer; font-weight: 600; font-size: 0.9rem;
+  }
+  .protocol-toggle button.active { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+  button.primary {
+    background: #2563eb; color: #fff; border: none; border-radius: 4px;
+    padding: 10px 20px; font-size: 1rem; cursor: pointer; font-weight: 600;
+  }
+  button.primary:hover { background: #1d4ed8; }
+  button.primary:disabled { background: #93c5fd; cursor: not-allowed; }
+  button.secondary {
+    background: #fff; color: #333; border: 1px solid #ccc; border-radius: 4px;
+    padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
+  }
+  button.secondary:hover { background: #f0f0f0; }
+  .actions { display: flex; gap: 12px; align-items: center; }
+  #log {
+    max-height: 400px; overflow-y: auto; font-family: monospace; font-size: 0.8rem;
+    background: #1e1e1e; color: #d4d4d4; padding: 12px; border-radius: 8px;
+    white-space: pre-wrap; word-break: break-all;
+  }
+  #log:empty::before { content: "Results will appear here..."; color: #666; }
+  .log-entry { margin-bottom: 8px; padding: 8px; border-radius: 4px; }
+  .log-success { background: #0d3320; color: #4ade80; }
+  .log-error { background: #3b1318; color: #f87171; }
+  .log-info { background: #1e293b; color: #93c5fd; }
+  #v1-fields, #v2-fields { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Votifier Test Tool</h1>
+
+<fieldset>
+  <legend>Connection</legend>
+  <div class="row">
+    <div>
+      <label for="host">Host</label>
+      <input type="text" id="host" value="127.0.0.1">
+    </div>
+    <div>
+      <label for="port">Port</label>
+      <input type="number" id="port" value="8192">
+    </div>
+  </div>
+
+  <label>Protocol</label>
+  <div class="protocol-toggle">
+    <button type="button" id="btn-v2" class="active" onclick="setProtocol('v2')">v2 (NuVotifier)</button>
+    <button type="button" id="btn-v1" onclick="setProtocol('v1')">v1 (Classic)</button>
+  </div>
+
+  <div id="v2-fields" style="display:block">
+    <label for="token">Token</label>
+    <input type="text" id="token" placeholder="UUID token from config.json">
+  </div>
+
+  <div id="v1-fields">
+    <label for="publicKey">Public Key (PEM)</label>
+    <textarea id="publicKey" rows="5" placeholder="-----BEGIN PUBLIC KEY-----&#10;...&#10;-----END PUBLIC KEY-----"></textarea>
+  </div>
+
+  <button type="button" class="secondary" onclick="autoDetect()">Auto-detect from server config</button>
+</fieldset>
+
+<fieldset>
+  <legend>Vote</legend>
+  <div class="row">
+    <div>
+      <label for="serviceName">Service Name</label>
+      <input type="text" id="serviceName" value="TestService">
+    </div>
+    <div>
+      <label for="username">Player Name</label>
+      <input type="text" id="username" placeholder="e.g. Notch">
+    </div>
+  </div>
+  <div class="row">
+    <div>
+      <label for="address">Address</label>
+      <input type="text" id="address" value="127.0.0.1">
+    </div>
+    <div>
+      <label for="timestamp">Timestamp</label>
+      <input type="text" id="timestamp">
+    </div>
+  </div>
+</fieldset>
+
+<div class="actions">
+  <button type="button" class="primary" id="sendBtn" onclick="sendVote()">Send Vote</button>
+  <button type="button" class="secondary" onclick="clearLog()">Clear Log</button>
+</div>
+
+<h2 style="font-size:1.1rem; margin-top:24px;">Results</h2>
+<div id="log"></div>
+
+<script>
+  let protocol = 'v2';
+
+  document.getElementById('timestamp').value = Math.floor(Date.now() / 1000).toString();
+
+  function setProtocol(p) {
+    protocol = p;
+    document.getElementById('btn-v1').classList.toggle('active', p === 'v1');
+    document.getElementById('btn-v2').classList.toggle('active', p === 'v2');
+    document.getElementById('v1-fields').style.display = p === 'v1' ? 'block' : 'none';
+    document.getElementById('v2-fields').style.display = p === 'v2' ? 'block' : 'none';
+  }
+
+  async function autoDetect() {
+    appendLog('info', 'Auto-detecting server config...');
+    try {
+      const resp = await fetch('/api/read-config');
+      const data = await resp.json();
+      if (data.found) {
+        if (data.host && data.host !== '0.0.0.0') document.getElementById('host').value = data.host;
+        if (data.port) document.getElementById('port').value = data.port;
+        if (data.token) document.getElementById('token').value = data.token;
+        if (data.publicKey) document.getElementById('publicKey').value = data.publicKey;
+        appendLog('success', 'Config loaded from: ' + data.path);
+      } else {
+        appendLog('error', data.error || 'Config not found');
+      }
+    } catch (e) {
+      appendLog('error', 'Failed to auto-detect: ' + e.message);
+    }
+  }
+
+  async function sendVote() {
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+
+    const payload = {
+      host: document.getElementById('host').value,
+      port: parseInt(document.getElementById('port').value, 10),
+      protocol: protocol,
+      serviceName: document.getElementById('serviceName').value,
+      username: document.getElementById('username').value,
+      address: document.getElementById('address').value,
+      timestamp: document.getElementById('timestamp').value
+    };
+
+    if (protocol === 'v1') {
+      payload.publicKey = document.getElementById('publicKey').value;
+    } else {
+      payload.token = document.getElementById('token').value;
+    }
+
+    appendLog('info', 'Sending ' + protocol + ' vote for "' + payload.username + '"...');
+
+    try {
+      const resp = await fetch('/api/send-vote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+
+      if (data.success) {
+        let msg = 'Vote sent successfully!';
+        if (data.greeting) msg += '\nGreeting: ' + data.greeting;
+        if (data.serverResponse) msg += '\nResponse: ' + data.serverResponse;
+        appendLog('success', msg);
+      } else {
+        appendLog('error', 'Vote failed: ' + (data.error || 'unknown error'));
+      }
+    } catch (e) {
+      appendLog('error', 'Request failed: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      document.getElementById('timestamp').value = Math.floor(Date.now() / 1000).toString();
+    }
+  }
+
+  function appendLog(level, message) {
+    const log = document.getElementById('log');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry log-' + level;
+    const time = new Date().toLocaleTimeString();
+    entry.textContent = '[' + time + '] ' + message;
+    log.appendChild(entry);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function clearLog() {
+    const log = document.getElementById('log');
+    while (log.firstChild) {
+      log.removeChild(log.firstChild);
+    }
+  }
+</script>
+
+</body>
+</html>

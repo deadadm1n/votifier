@@ -17,8 +17,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class VoteStorageTest {
 
     @Test
-    void addAndRetrieve(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void addAndRetrieve(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         Vote vote = new Vote("Service", "PlayerOne", "127.0.0.1", "now");
         storage.addVote(vote);
 
@@ -29,8 +29,8 @@ class VoteStorageTest {
     }
 
     @Test
-    void getAndRemoveIsDestructive(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void getAndRemoveIsDestructive(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         storage.addVote(new Vote("Service", "PlayerOne", "127.0.0.1", "now"));
 
         List<Vote> first = storage.getAndRemoveVotes("PlayerOne");
@@ -41,8 +41,8 @@ class VoteStorageTest {
     }
 
     @Test
-    void caseInsensitiveLookup(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void caseInsensitiveLookup(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         storage.addVote(new Vote("Service", "PlayerOne", "127.0.0.1", "now"));
 
         // Retrieve with different case
@@ -51,8 +51,8 @@ class VoteStorageTest {
     }
 
     @Test
-    void caseInsensitiveAddAndRetrieve(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void caseInsensitiveAddAndRetrieve(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         storage.addVote(new Vote("Service1", "PlayerOne", "127.0.0.1", "1"));
         storage.addVote(new Vote("Service2", "PLAYERONE", "127.0.0.1", "2"));
         storage.addVote(new Vote("Service3", "playerone", "127.0.0.1", "3"));
@@ -62,8 +62,8 @@ class VoteStorageTest {
     }
 
     @Test
-    void multipleVotesPerPlayer(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void multipleVotesPerPlayer(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         storage.addVote(new Vote("Service1", "PlayerOne", "127.0.0.1", "1"));
         storage.addVote(new Vote("Service2", "PlayerOne", "127.0.0.1", "2"));
         storage.addVote(new Vote("Service3", "PlayerOne", "127.0.0.1", "3"));
@@ -73,20 +73,20 @@ class VoteStorageTest {
     }
 
     @Test
-    void persistenceAcrossInstances(@TempDir Path tempDir) {
-        VoteStorage first = new VoteStorage(tempDir);
+    void persistenceAcrossInstances(@TempDir Path tempDir) throws Exception {
+        VoteStorage first = new VoteStorage(VotifierConfig.load(tempDir));
         first.addVote(new Vote("Service", "PlayerOne", "127.0.0.1", "now"));
 
-        // Create a new instance from the same directory
-        VoteStorage second = new VoteStorage(tempDir);
+        // Create a new instance by reloading config from the same directory
+        VoteStorage second = new VoteStorage(VotifierConfig.load(tempDir));
         List<Vote> votes = second.getAndRemoveVotes("PlayerOne");
         assertEquals(1, votes.size());
         assertEquals("Service", votes.get(0).getServiceName());
     }
 
     @Test
-    void emptyReturnsEmptyList(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void emptyReturnsEmptyList(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         List<Vote> votes = storage.getAndRemoveVotes("NonExistent");
         assertNotNull(votes);
         assertTrue(votes.isEmpty());
@@ -94,7 +94,7 @@ class VoteStorageTest {
 
     @Test
     void concurrentWrites(@TempDir Path tempDir) throws Exception {
-        VoteStorage storage = new VoteStorage(tempDir);
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         int threadCount = 10;
         int votesPerThread = 100;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -130,8 +130,8 @@ class VoteStorageTest {
     }
 
     @Test
-    void multiplePlayers(@TempDir Path tempDir) {
-        VoteStorage storage = new VoteStorage(tempDir);
+    void multiplePlayers(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
         storage.addVote(new Vote("Service", "Alice", "127.0.0.1", "1"));
         storage.addVote(new Vote("Service", "Bob", "127.0.0.1", "2"));
         storage.addVote(new Vote("Service", "Alice", "127.0.0.1", "3"));
