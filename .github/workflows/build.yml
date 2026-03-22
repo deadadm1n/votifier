@@ -54,3 +54,75 @@ jobs:
           name: neoforge-jar
           path: neoforge/build/libs/*.jar
         if: hashFiles('neoforge/build/libs/*.jar') != ''
+
+  server-smoke-test:
+    needs: build
+    runs-on: ubuntu-latest
+    if: hashFiles('neoforge/build.gradle') != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Java version
+        id: java
+        run: |
+          JAVA_VERSION=$(grep 'java_version=' gradle.properties | cut -d'=' -f2)
+          echo "version=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ steps.java.outputs.version }}
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build project
+        run: ./gradlew build
+
+      - name: Accept EULA
+        run: mkdir -p neoforge/run && echo "eula=true" > neoforge/run/eula.txt
+
+      - name: Start server in background
+        run: ./gradlew :neoforge:runServer > server.log 2>&1 &
+        env:
+          CI: true
+
+      - name: Wait for Votifier to start
+        run: |
+          timeout=300
+          elapsed=0
+          while [ $elapsed -lt $timeout ]; do
+            if [ -f server.log ]; then
+              if grep -q "Votifier server started on" server.log; then
+                echo "Votifier started successfully"
+                exit 0
+              fi
+              if grep -qiE "crash|exception.*fatal|failed to load|ModLoadingException" server.log; then
+                echo "Server crash detected!"
+                tail -50 server.log
+                exit 1
+              fi
+            fi
+            sleep 5
+            elapsed=$((elapsed + 5))
+          done
+          echo "Timed out after ${timeout}s waiting for Votifier to start"
+          if [ -f server.log ]; then
+            tail -100 server.log
+          fi
+          exit 1
+
+      - name: Stop server
+        if: always()
+        run: |
+          pkill -f "runServer" || true
+          pkill -f "minecraft" || true
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: server.log
