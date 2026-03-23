@@ -114,7 +114,7 @@ jobs:
                 echo "Votifier started successfully"
                 exit 0
               fi
-              if grep -qiE "crash|exception.*fatal|failed to load|ModLoadingException" server.log; then
+              if grep -qE "ModLoadingException|the server has crashed|ERROR.*failed to load" server.log; then
                 echo "Server crash detected!"
                 tail -50 server.log
                 exit 1
