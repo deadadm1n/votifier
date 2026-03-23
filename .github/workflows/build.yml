@@ -122,7 +122,7 @@ jobs:
                 echo "Votifier started successfully"
                 exit 0
               fi
-              if grep -qE "ModLoadingException|the server has crashed|ERROR.*failed to load" server-${{ matrix.loader }}.log; then
+              if grep -qE "ModLoadingException|the server has crashed|ERROR.*failed to load|Incompatible mods found|FormattedException" server-${{ matrix.loader }}.log; then
                 echo "Server crash detected!"
                 tail -50 server-${{ matrix.loader }}.log
                 exit 1
