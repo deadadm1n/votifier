@@ -58,65 +58,73 @@ jobs:
   server-smoke-test:
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        loader: [neoforge, forge, fabric]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for NeoForge subproject
+      - name: Check for loader subproject
         id: check
         run: |
-          if [ -f neoforge/build.gradle ]; then
-            echo "has_neoforge=true" >> "$GITHUB_OUTPUT"
+          if [ -f ${{ matrix.loader }}/build.gradle ]; then
+            echo "has_loader=true" >> "$GITHUB_OUTPUT"
           else
-            echo "has_neoforge=false" >> "$GITHUB_OUTPUT"
+            echo "has_loader=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Detect Java version
-        if: steps.check.outputs.has_neoforge == 'true'
+        if: steps.check.outputs.has_loader == 'true'
         id: java
         run: |
           JAVA_VERSION=$(grep 'java_version=' gradle.properties | cut -d'=' -f2)
           echo "version=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Set up JDK
-        if: steps.check.outputs.has_neoforge == 'true'
+        if: steps.check.outputs.has_loader == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ steps.java.outputs.version }}
           distribution: 'temurin'
 
       - name: Setup Gradle
-        if: steps.check.outputs.has_neoforge == 'true'
+        if: steps.check.outputs.has_loader == 'true'
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build project
-        if: steps.check.outputs.has_neoforge == 'true'
+        if: steps.check.outputs.has_loader == 'true'
         run: ./gradlew build
 
       - name: Accept EULA
-        if: steps.check.outputs.has_neoforge == 'true'
-        run: mkdir -p neoforge/run && echo "eula=true" > neoforge/run/eula.txt
+        if: steps.check.outputs.has_loader == 'true'
+        run: |
+          mkdir -p ${{ matrix.loader }}/run
+          echo "eula=true" > ${{ matrix.loader }}/run/eula.txt
+          mkdir -p ${{ matrix.loader }}/runs/server
+          echo "eula=true" > ${{ matrix.loader }}/runs/server/eula.txt
 
       - name: Start server in background
-        if: steps.check.outputs.has_neoforge == 'true'
-        run: ./gradlew :neoforge:runServer > server.log 2>&1 &
+        if: steps.check.outputs.has_loader == 'true'
+        run: ./gradlew :${{ matrix.loader }}:runServer > server-${{ matrix.loader }}.log 2>&1 &
         env:
           CI: true
 
       - name: Wait for Votifier to start
-        if: steps.check.outputs.has_neoforge == 'true'
+        if: steps.check.outputs.has_loader == 'true'
         run: |
           timeout=300
           elapsed=0
           while [ $elapsed -lt $timeout ]; do
-            if [ -f server.log ]; then
-              if grep -q "Votifier server started on" server.log; then
+            if [ -f server-${{ matrix.loader }}.log ]; then
+              if grep -q "Votifier server started on" server-${{ matrix.loader }}.log; then
                 echo "Votifier started successfully"
                 exit 0
               fi
-              if grep -qE "ModLoadingException|the server has crashed|ERROR.*failed to load" server.log; then
+              if grep -qE "ModLoadingException|the server has crashed|ERROR.*failed to load" server-${{ matrix.loader }}.log; then
                 echo "Server crash detected!"
-                tail -50 server.log
+                tail -50 server-${{ matrix.loader }}.log
                 exit 1
               fi
             fi
@@ -124,20 +132,20 @@ jobs:
             elapsed=$((elapsed + 5))
           done
           echo "Timed out after ${timeout}s waiting for Votifier to start"
-          if [ -f server.log ]; then
-            tail -100 server.log
+          if [ -f server-${{ matrix.loader }}.log ]; then
+            tail -100 server-${{ matrix.loader }}.log
           fi
           exit 1
 
       - name: Stop server
-        if: always() && steps.check.outputs.has_neoforge == 'true'
+        if: always() && steps.check.outputs.has_loader == 'true'
         run: |
           pkill -f "runServer" || true
           pkill -f "minecraft" || true
 
       - name: Upload server log
-        if: always() && steps.check.outputs.has_neoforge == 'true'
+        if: always() && steps.check.outputs.has_loader == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: server-log
-          path: server.log
+          name: server-log-${{ matrix.loader }}
+          path: server-${{ matrix.loader }}.log
