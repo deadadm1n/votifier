@@ -24,6 +24,7 @@ public class VotifierConfig {
     private NuVotifierV2Config nuVotifierV2 = new NuVotifierV2Config();
     private int votePointsPerVote = 1;
     private List<String> voteCommands = new ArrayList<>(Collections.singletonList("say {player} voted and earned {points} vote point(s)!"));
+    private List<ApiVoteSourceConfig> apiVoteSources = new ArrayList<>();
     private VoteShopConfig voteShop = new VoteShopConfig();
 
     private transient Path configDir;
@@ -86,6 +87,12 @@ public class VotifierConfig {
         if (voteCommands == null) {
             voteCommands = new ArrayList<>();
         }
+        if (apiVoteSources == null) {
+            apiVoteSources = new ArrayList<>();
+        }
+        for (ApiVoteSourceConfig source : apiVoteSources) {
+            source.normalize();
+        }
         if (voteShop == null) {
             voteShop = new VoteShopConfig();
         }
@@ -126,6 +133,10 @@ public class VotifierConfig {
 
     public List<String> getVoteCommands() {
         return voteCommands;
+    }
+
+    public List<ApiVoteSourceConfig> getApiVoteSources() {
+        return apiVoteSources;
     }
 
     public VoteShopConfig getVoteShop() {
@@ -204,6 +215,111 @@ public class VotifierConfig {
                 }
             }
             return null;
+        }
+    }
+
+    public static class ApiVoteSourceConfig {
+        private boolean enabled = false;
+        private String id = "example-api-source";
+        private String baseUrl = "";
+        private String apiKey = "";
+        private String serverId = "";
+        private int pollIntervalSeconds = 60;
+        private String unclaimedVotesUrl = "{baseUrl}/api/v2/{apiKey}/server/{serverId}/votes/unclaimed";
+        private String unclaimedVotesMethod = "GET";
+        private String unclaimedVotesBody = "";
+        private String batchClaimUrl = "{baseUrl}/api/v2/{apiKey}/server/{serverId}/votes/batch";
+        private String batchClaimMethod = "PATCH";
+        private String batchClaimBody = "{\"votes\":{voteUpdatesJsonArray}}";
+        private Map<String, String> headers = new LinkedHashMap<>();
+        private String votesPath = "data";
+        private String voteIdPath = "id";
+        private String usernamePath = "username";
+        private String timestampPath = "timestamp";
+        private String addressPath = "address";
+
+        private void normalize() {
+            if (id == null || id.isBlank()) {
+                id = "api-source";
+            }
+            if (pollIntervalSeconds < 15) {
+                pollIntervalSeconds = 15;
+            }
+            if (headers == null) {
+                headers = new LinkedHashMap<>();
+            }
+        }
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public String getBaseUrl() {
+            return baseUrl == null ? "" : baseUrl;
+        }
+
+        public String getApiKey() {
+            return apiKey == null ? "" : apiKey;
+        }
+
+        public String getServerId() {
+            return serverId == null ? "" : serverId;
+        }
+
+        public int getPollIntervalSeconds() {
+            return pollIntervalSeconds;
+        }
+
+        public String getUnclaimedVotesUrl() {
+            return unclaimedVotesUrl == null ? "" : unclaimedVotesUrl;
+        }
+
+        public String getUnclaimedVotesMethod() {
+            return unclaimedVotesMethod == null ? "GET" : unclaimedVotesMethod;
+        }
+
+        public String getUnclaimedVotesBody() {
+            return unclaimedVotesBody == null ? "" : unclaimedVotesBody;
+        }
+
+        public String getBatchClaimUrl() {
+            return batchClaimUrl == null ? "" : batchClaimUrl;
+        }
+
+        public String getBatchClaimMethod() {
+            return batchClaimMethod == null ? "PATCH" : batchClaimMethod;
+        }
+
+        public String getBatchClaimBody() {
+            return batchClaimBody == null ? "" : batchClaimBody;
+        }
+
+        public Map<String, String> getHeaders() {
+            return headers;
+        }
+
+        public String getVotesPath() {
+            return votesPath == null ? "" : votesPath;
+        }
+
+        public String getVoteIdPath() {
+            return voteIdPath == null ? "id" : voteIdPath;
+        }
+
+        public String getUsernamePath() {
+            return usernamePath == null ? "username" : usernamePath;
+        }
+
+        public String getTimestampPath() {
+            return timestampPath == null ? "timestamp" : timestampPath;
+        }
+
+        public String getAddressPath() {
+            return addressPath == null ? "address" : addressPath;
         }
     }
 

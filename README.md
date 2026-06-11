@@ -49,6 +49,28 @@ Files are stored in `config/votifier/`.
   "voteCommands": [
     "say {player} voted and earned {points} vote point(s)!"
   ],
+  "apiVoteSources": [
+    {
+      "enabled": false,
+      "id": "acserverlist",
+      "baseUrl": "https://deutsche-arkserver.de",
+      "apiKey": "",
+      "serverId": "",
+      "pollIntervalSeconds": 60,
+      "unclaimedVotesUrl": "{baseUrl}/api/v2/{apiKey}/server/{serverId}/votes/unclaimed",
+      "unclaimedVotesMethod": "GET",
+      "unclaimedVotesBody": "",
+      "batchClaimUrl": "{baseUrl}/api/v2/{apiKey}/server/{serverId}/votes/batch",
+      "batchClaimMethod": "PATCH",
+      "batchClaimBody": "{\"votes\":{voteUpdatesJsonArray}}",
+      "headers": {},
+      "votesPath": "data",
+      "voteIdPath": "id",
+      "usernamePath": "username",
+      "timestampPath": "timestamp",
+      "addressPath": "address"
+    }
+  ],
   "voteShop": {
     "enabled": true,
     "items": [
@@ -68,6 +90,29 @@ Files are stored in `config/votifier/`.
 ```
 
 Old configs with a top-level `token` and `commands` are migrated automatically.
+
+### API Vote Sources
+
+`apiVoteSources` lets the mod pull votes from websites that expose HTTP APIs instead of sending Votifier packets.
+
+The poller flow is:
+
+1. Request unclaimed votes from `unclaimedVotesUrl`.
+2. Read all votes from `votesPath`.
+3. Extract each vote ID and username.
+4. Send one batch claim request to `batchClaimUrl`.
+5. If the claim request succeeds, store every vote in `player_votes.json`.
+
+Template values:
+
+- `{baseUrl}`
+- `{apiKey}`
+- `{serverId}`
+- `{voteIdsJsonArray}` - `["1","2"]`
+- `{voteIdsCsv}` - `1,2`
+- `{voteUpdatesJsonArray}` - `[{"id":"1","claimed":true},{"id":"2","claimed":true}]`
+
+JSON paths are dot-separated, for example `data.votes`.
 
 ### Placeholders
 

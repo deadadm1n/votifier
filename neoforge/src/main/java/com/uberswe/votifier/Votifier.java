@@ -24,6 +24,7 @@ import java.util.Map;
 @Mod(Constants.MOD_ID)
 public class Votifier {
     private VotifierServer votifierServer;
+    private ApiVotePoller apiVotePoller;
     private MinecraftServer mcServer;
 
     public Votifier() {
@@ -47,6 +48,9 @@ public class Votifier {
             votifierServer = new VotifierServer(config, keyManager, voteStorage);
             voteStorage.setVoteCallback(this::onVoteReceived);
             votifierServer.start();
+
+            apiVotePoller = new ApiVotePoller(config, voteStorage);
+            apiVotePoller.start();
         } catch (Exception e) {
             Constants.LOG.error("Failed to start Votifier", e);
         }
@@ -54,6 +58,10 @@ public class Votifier {
 
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
+        if (apiVotePoller != null) {
+            apiVotePoller.stop();
+            apiVotePoller = null;
+        }
         if (votifierServer != null) {
             votifierServer.stop();
         }

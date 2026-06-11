@@ -29,6 +29,7 @@ class VotifierConfigTest {
         assertEquals(1, config.getVotePointsPerVote());
         assertNotNull(config.getVoteCommands());
         assertFalse(config.getVoteCommands().isEmpty());
+        assertNotNull(config.getApiVoteSources());
     }
 
     @Test
