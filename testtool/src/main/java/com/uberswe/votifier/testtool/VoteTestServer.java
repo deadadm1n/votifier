@@ -122,7 +122,12 @@ public class VoteTestServer {
 
                 String configJson = Files.readString(configFile);
                 JsonObject config = JsonParser.parseString(configJson).getAsJsonObject();
-                if (config.has("token")) resp.addProperty("token", config.get("token").getAsString());
+                if (config.has("nuVotifierV2") && config.get("nuVotifierV2").isJsonObject()) {
+                    JsonObject v2 = config.getAsJsonObject("nuVotifierV2");
+                    if (v2.has("token")) resp.addProperty("token", v2.get("token").getAsString());
+                } else if (config.has("token")) {
+                    resp.addProperty("token", config.get("token").getAsString());
+                }
                 if (config.has("port")) resp.addProperty("port", config.get("port").getAsInt());
                 if (config.has("host")) resp.addProperty("host", config.get("host").getAsString());
 

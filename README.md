@@ -5,105 +5,127 @@
 <h1 align="center">Modded Votifier</h1>
 
 <p align="center">
-  A server-side Minecraft mod that receives votes from server list websites like
-  <a href="https://createmodservers.com">createmodservers.com</a> and rewards players with configurable commands.
-</p>
-
-<p align="center">
-  <a href="https://github.com/uberswe/votifier/actions/workflows/build.yml"><img src="https://github.com/uberswe/votifier/actions/workflows/build.yml/badge.svg" alt="Build"></a>
-  <a href="https://github.com/uberswe/votifier/releases/latest"><img src="https://img.shields.io/github/v/release/uberswe/votifier?include_prereleases&sort=semver&logo=github" alt="GitHub Release"></a>
-  <a href="https://github.com/uberswe/votifier/blob/main/LICENSE.txt"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License"></a>
+  A server-side Minecraft mod that receives server-list votes, stores player vote balances, and lets players spend votes in a configurable vote shop.
 </p>
 
 ---
 
 ## Features
 
-- **Votifier v1 support** — classic RSA-encrypted vote protocol
-- **NuVotifier v2 support** — modern HMAC-SHA256 signed vote protocol
-- **Pending rewards** — votes are stored and commands execute when the player joins
-- **Configurable commands** — run any command with `{player}` placeholder on vote
-- **Auto-generated keys** — RSA keypair and v2 token are created on first run
-- **Multi-loader** — supports Forge, NeoForge, and Fabric across multiple Minecraft versions
-
-## Side
-
-This is a **server-side only** mod. It does not need to be installed on the client.
-
-## Supported Versions
-
-| Branch | Minecraft | Loaders | Java |
-|--------|-----------|---------|------|
-| `mc/1.21.1` | 1.21.1 | NeoForge, Fabric | 21 |
-| `mc/1.20.1` | 1.20.1 | Forge, Fabric | 17 |
-| `mc/1.19.2` | 1.19.2 | Forge, Fabric | 17 |
-| `main` / `mc/1.18.2` | 1.18.2 | Forge, Fabric | 17 |
+- Votifier v1 support using the generated RSA public/private key pair
+- NuVotifier v2 support using an HMAC token stored under `nuVotifierV2`
+- Vote balances saved per player
+- Pending reward commands for offline players
+- Configurable vote shop with command rewards
+- Vote history written to `vote_history.jsonl`
+- Server-side only
 
 ## Installation
 
-1. Install the mod loader for your Minecraft version (NeoForge, Forge, or Fabric)
-2. For Fabric: install [Fabric API](https://modrinth.com/mod/fabric-api)
-3. Drop the Modded Votifier `.jar` for your loader into your server's `mods/` folder
-4. Start the server — config files and RSA keys are generated automatically
-5. Copy the public key and token from the server log into your server list website
+1. Drop the NeoForge jar into your server `mods` folder.
+2. Start the server once to generate `config/votifier/`.
+3. For Votifier v1 sites, paste `config/votifier/public.pem` into the server list website.
+4. For NuVotifier v2 sites, paste `nuVotifierV2.token` from `config/votifier/config.json`.
+5. Forward the configured TCP port, usually `8192`, to the Minecraft server.
 
 ## Configuration
 
-Config files are located at `config/votifier/`.
+Files are stored in `config/votifier/`.
 
 ### `config.json`
 
-| Option | Default | Description |
-|---|---|---|
-| `host` | `0.0.0.0` | Address to bind the vote listener to |
-| `port` | `8192` | Port to listen for incoming votes |
-| `token` | *(auto-generated)* | NuVotifier v2 HMAC token |
-| `commands` | `["say {player} voted on createmodservers.com!"]` | Commands to run when a vote is received |
+```json
+{
+  "host": "0.0.0.0",
+  "port": 8192,
+  "votifierV1": {
+    "enabled": true
+  },
+  "nuVotifierV2": {
+    "enabled": true,
+    "token": "auto-generated-token"
+  },
+  "votePointsPerVote": 1,
+  "voteCommands": [
+    "say {player} voted and earned {points} vote point(s)!"
+  ],
+  "voteShop": {
+    "enabled": true,
+    "items": [
+      {
+        "id": "vip",
+        "name": "VIP Rank",
+        "description": "Example rank reward.",
+        "cost": 25,
+        "commands": [
+          "ftbranks add {player} vip",
+          "ftbranks reload"
+        ]
+      }
+    ]
+  }
+}
+```
 
-The `{player}` placeholder is replaced with the voter's username.
+Old configs with a top-level `token` and `commands` are migrated automatically.
 
-### Other files
+### Placeholders
+
+Vote commands support:
+
+- `{player}`
+- `{points}`
+
+Shop item commands support:
+
+- `{player}`
+- `{item}`
+- `{item_name}`
+- `{cost}`
+
+### Data Files
 
 | File | Description |
 |---|---|
-| `public.pem` | RSA public key — paste this into your server list website |
-| `private.pem` | RSA private key — used to decrypt v1 votes |
-| `pending_votes.json` | Pending vote rewards for offline players |
+| `config.json` | Listener, protocol, reward, and shop settings |
+| `public.pem` | Votifier v1 public key for server list websites |
+| `private.pem` | Votifier v1 private key used by the server |
+| `player_votes.json` | Player balances, lifetime vote counts, and pending reward commands |
+| `vote_history.jsonl` | Append-only vote history, one JSON vote per line |
 
-## How It Works
+## Commands
 
-1. Register your server on a server list website (e.g. [createmodservers.com](https://createmodservers.com))
-2. Paste your **public key** (from `config/votifier/public.pem` or the server log) and set the Votifier **port** on the website
-3. For NuVotifier v2: also paste the **token** from `config/votifier/config.json` or the server log
-4. When a player votes, the website sends the vote to your server
-5. If the player is online, the configured commands run immediately
-6. If the player is offline, the vote is saved and commands run when they next join
+Player commands:
 
-## Building from Source
+- `/vote` - show help
+- `/vote balance` - show your vote balance and lifetime votes
+- `/vote shop` - list shop items
+- `/vote buy <item>` - spend votes on a shop item
+- `/vote top` - show the highest stored balances
+
+Admin commands, usable by console or opped players:
+
+- `/vote admin add <player> <amount>`
+- `/vote admin set <player> <amount>`
+
+## How Votes Are Processed
+
+When a vote arrives, the plugin:
+
+1. Validates the v1 RSA payload or v2 HMAC signature.
+2. Adds `votePointsPerVote` to the player's balance.
+3. Adds the vote to `vote_history.jsonl`.
+4. Stores pending reward commands for that player.
+5. Runs pending vote commands immediately if the player is online, or when they next join.
+
+## Building
 
 ```bash
-git clone https://github.com/uberswe/votifier.git
-cd votifier
-git checkout mc/1.18.2   # or mc/1.19.2, mc/1.20.1, mc/1.21.1
-./gradlew build
+./gradlew :neoforge:build
 ```
 
-JARs are produced per loader:
-- `forge/build/libs/` — Forge JAR (1.18.2–1.20.1)
-- `neoforge/build/libs/` — NeoForge JAR (1.21.1)
-- `fabric/build/libs/` — Fabric JAR
-
-## Project Structure
-
-This is a multi-loader project following the [MultiLoader-Template](https://github.com/jaredlll08/MultiLoader-Template) pattern:
-
-```
-common/    - Shared code (vote server, config, RSA, storage)
-forge/     - Forge entry point and events (1.18.2–1.20.1)
-neoforge/  - NeoForge entry point and events (1.21.1)
-fabric/    - Fabric entry point and events
-```
+The NeoForge jar is written to `neoforge/build/libs/`.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE.txt](LICENSE.txt) for details.
+This project is licensed under the MIT License. See `LICENSE.txt` for details.

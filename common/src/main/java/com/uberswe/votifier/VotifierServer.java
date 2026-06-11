@@ -72,8 +72,16 @@ public class VotifierServer {
             }
 
             if (firstByte == 0x73 && secondByte == 0x3A) {
+                if (!config.getNuVotifierV2().isEnabled()) {
+                    sendV2Response(out, "error", "NuVotifier v2 is disabled");
+                    return;
+                }
                 handleV2(in, out, challenge);
             } else {
+                if (!config.getVotifierV1().isEnabled()) {
+                    Constants.LOG.warn("Rejected v1 vote because Votifier v1 is disabled");
+                    return;
+                }
                 handleV1(in, firstByte, secondByte);
             }
         } catch (Exception e) {

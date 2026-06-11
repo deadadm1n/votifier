@@ -24,8 +24,11 @@ class VotifierConfigTest {
         assertEquals(8192, config.getPort());
         assertNotNull(config.getToken());
         assertFalse(config.getToken().isEmpty());
-        assertNotNull(config.getCommands());
-        assertFalse(config.getCommands().isEmpty());
+        assertTrue(config.getVotifierV1().isEnabled());
+        assertTrue(config.getNuVotifierV2().isEnabled());
+        assertEquals(1, config.getVotePointsPerVote());
+        assertNotNull(config.getVoteCommands());
+        assertFalse(config.getVoteCommands().isEmpty());
     }
 
     @Test
@@ -43,7 +46,7 @@ class VotifierConfigTest {
     @Test
     void defaultCommandContainsPlayerPlaceholder(@TempDir Path tempDir) throws Exception {
         VotifierConfig config = VotifierConfig.load(tempDir);
-        assertTrue(config.getCommands().stream().anyMatch(c -> c.contains("{player}")));
+        assertTrue(config.getVoteCommands().stream().anyMatch(c -> c.contains("{player}")));
     }
 
     @Test
@@ -57,8 +60,8 @@ class VotifierConfigTest {
         assertEquals("192.168.1.1", config.getHost());
         assertEquals(9999, config.getPort());
         assertEquals("my-token", config.getToken());
-        assertEquals(1, config.getCommands().size());
-        assertEquals("op {player}", config.getCommands().get(0));
+        assertEquals(1, config.getVoteCommands().size());
+        assertEquals("op {player}", config.getVoteCommands().get(0));
     }
 
     @Test

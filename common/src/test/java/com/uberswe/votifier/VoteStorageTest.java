@@ -26,6 +26,8 @@ class VoteStorageTest {
         assertEquals(1, votes.size());
         assertEquals("Service", votes.get(0).getServiceName());
         assertEquals("PlayerOne", votes.get(0).getUsername());
+        assertEquals(1, storage.getBalance("PlayerOne"));
+        assertEquals(1, storage.getLifetimeVotes("PlayerOne"));
     }
 
     @Test
@@ -38,6 +40,7 @@ class VoteStorageTest {
 
         List<Vote> second = storage.getAndRemoveVotes("PlayerOne");
         assertTrue(second.isEmpty());
+        assertEquals(1, storage.getBalance("PlayerOne"));
     }
 
     @Test
@@ -59,6 +62,7 @@ class VoteStorageTest {
 
         List<Vote> votes = storage.getAndRemoveVotes("PlayerOne");
         assertEquals(3, votes.size());
+        assertEquals(3, storage.getBalance("PlayerOne"));
     }
 
     @Test
@@ -82,6 +86,7 @@ class VoteStorageTest {
         List<Vote> votes = second.getAndRemoveVotes("PlayerOne");
         assertEquals(1, votes.size());
         assertEquals("Service", votes.get(0).getServiceName());
+        assertEquals(1, second.getBalance("PlayerOne"));
     }
 
     @Test
@@ -127,6 +132,7 @@ class VoteStorageTest {
 
         List<Vote> allVotes = storage.getAndRemoveVotes("Player");
         assertEquals(threadCount * votesPerThread, allVotes.size());
+        assertEquals(threadCount * votesPerThread, storage.getBalance("Player"));
     }
 
     @Test
@@ -141,5 +147,24 @@ class VoteStorageTest {
 
         List<Vote> bobVotes = storage.getAndRemoveVotes("Bob");
         assertEquals(1, bobVotes.size());
+    }
+
+    @Test
+    void spendBalance(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
+        storage.addVote(new Vote("Service", "PlayerOne", "127.0.0.1", "now"));
+        storage.addBalance("PlayerOne", 4);
+
+        assertTrue(storage.spend("PlayerOne", 3));
+        assertEquals(2, storage.getBalance("PlayerOne"));
+        assertFalse(storage.spend("PlayerOne", 3));
+        assertEquals(2, storage.getBalance("PlayerOne"));
+    }
+
+    @Test
+    void adminSetBalance(@TempDir Path tempDir) throws Exception {
+        VoteStorage storage = new VoteStorage(VotifierConfig.load(tempDir));
+        storage.setBalance("PlayerOne", 12);
+        assertEquals(12, storage.getBalance("playerone"));
     }
 }
