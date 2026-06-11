@@ -15,5 +15,7 @@ rootProject.name = 'votifier'
 
 include 'common'
 include 'neoforge'
-include 'fabric'
+if (providers.gradleProperty("enableFabric").orNull == "true") {
+    include 'fabric'
+}
 include 'testtool'

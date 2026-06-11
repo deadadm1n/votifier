@@ -55,10 +55,10 @@ public class Votifier {
     @SubscribeEvent
     public void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         if (votifierServer == null) return;
-        MinecraftServer server = event.getEntity().getServer();
+        MinecraftServer server = event.getEntity().level().getServer();
         if (server == null) return;
 
-        String playerName = event.getEntity().getGameProfile().getName();
+        String playerName = event.getEntity().getName().getString();
         processVotes(server, playerName);
     }
 
